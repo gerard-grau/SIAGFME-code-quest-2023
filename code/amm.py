@@ -6,6 +6,7 @@ Created on Fri Nov  21 17:26:27 2023
 """
 
 import numpy as np
+from numpy.typing import NDArray
 from collections import deque
 import copy
 
@@ -14,7 +15,7 @@ from tqdm import tqdm
 
 class amm():
 
-    def __init__(self, Rx: list[float], Ry: list[float],  phi: list[float]):
+    def __init__(self, Rx: NDArray, Ry: NDArray,  phi: NDArray) -> None:
         """
         instantiate the class
 
@@ -44,10 +45,10 @@ class amm():
         self.L = np.sqrt(self.Rx*self.Ry)
 
         # the trader begins with no LP tokens
-        self.l = np.zeros(len(self.L))
+        self.l = np.zeros(self.N)
 
 
-    def swap_x_to_y(self, x: list[float], quote=False):
+    def swap_x_to_y(self, x: list, quote = False) -> NDArray:
         """
         swap token-X for token-Y across all pools simulataneously
 
@@ -66,20 +67,17 @@ class amm():
             the amount of token-Y you receive from each pool.
 
         """
+        x = np.array(x)
+        y = np.array(x * ( (1-self.phi) * self.Ry ) / ( self.Rx + (1-self.phi)*x ))
 
-        y = np.zeros(self.N)
-        
-        for i, Φ in enumerate(self.phi):
-            y[i] = x[i] * ( (1-Φ) * self.Ry[i] ) / ( self.Rx[i] + (1-Φ) * x[i] )
-            
-            if not quote:
-                self.Rx[i] += x[i]
-                self.Ry[i] -= y[i]
+        if not quote:
+            self.Rx += x
+            self.Ry -= y
 
         return y
 
 
-    def swap_y_to_x(self, y: list[float], quote=False):
+    def swap_y_to_x(self, y: list, quote = False) -> NDArray:
         """
         swap token-Y for token-X across all pools simulataneously
 
@@ -98,20 +96,17 @@ class amm():
             the amount of token-X you receive from each pool.
 
         """
-        
-        x = np.zeros(self.N)
-        
-        for i, Φ in enumerate(self.phi):
-            x[i] = y[i] * ( (1-Φ) * self.Rx[i] ) / ( self.Ry[i] + (1-Φ) * y[i] )
+        y = np.array(y)
+        x = y * ( (1-self.phi) * self.Rx ) / ( self.Ry + (1-self.phi)*y )
             
-            if not quote:
-                self.Rx[i] -= x[i]
-                self.Ry[i] += y[i]
+        if not quote:
+            self.Rx -= x
+            self.Ry += y
 
         return x
 
 
-    def mint(self, x, y):
+    def mint(self, x: list, y: list) -> NDArray:
         """
         mint LP tokens across all pools
 
@@ -128,17 +123,24 @@ class amm():
             The amount of LP tokens you receive from each pool.
 
         """
+        x = np.array(x)
+        y = np.array(y)
 
-        for k in range(len(self.Rx)):
-            assert np.abs(((x[k]/y[k])-self.Rx[k]/self.Ry[k])) < 1e-9, "pool " + str(k) + " has incorrect submission of tokens"
+        for k in range(self.N):
+            assert np.abs( ((x[k]/y[k])-self.Rx[k]/self.Ry[k]) ) < 1e-9, "pool " + str(k) + " has incorrect submission of tokens"
 
-        # ********************
-        #     fill in code
-        # ********************
+        l = x / self.Rx * self.L
+        
+        self.Rx += x
+        self.Ry += y
+
+        self.L += l
+        self.l += l
 
         return l
 
-    def swap_and_mint(self, x):
+
+    def swap_and_mint(self, x: list) -> NDArray:
         """
         a method that determines the correct amount of y for each x within the corresponding pool
         to swap and then mint tokens with the reamaing x and the y you received
@@ -147,43 +149,22 @@ class amm():
         ----------
         x : array (K,)
             amount of token-X you have for each pool.
-
+            
         Returns
         -------
         l : array (K,)
             The amount of LP tokens you receive from each pool.
 
         """
+        x = np.array(x)
+        θ = 1 + (2-self.phi)*self.Rx / (2*(1-self.phi)*x) * ( 1 - np.sqrt( 1 + 4*x/self.Rx * (1-self.phi)/(2-self.phi)**2 ) )
         
-        # ********************
-        #     fill in code
-        # ********************
+        y = self.swap_x_to_y( (1 - θ)*x )
 
-        return l
-    
-    def burn_and_swap(self, l):
-        """
-        a method that burns your LP tokens, then swaps y to x and returns only x
+        return self.mint(θ*x, y)
 
-        Parameters
-        ----------
-        l : array (K,)
-            amount of LP tokens you have for each pool.
 
-        Returns
-        -------
-        x : array (K,)
-            The amount of token-x you receive at the end.
-
-        """
-        
-        # ********************
-        #     fill in code
-        # ********************
-
-        return total_x
-
-    def burn(self, l):
+    def burn(self, l: list) -> tuple[NDArray, NDArray]:
         """
         burn LP tokens across all pools
 
@@ -201,14 +182,55 @@ class amm():
 
         """
 
-        for k in range(len(self.L)):
+        l = np.array(l)
+
+        for k in range(self.N):
             assert l[k] <= self.l[k], "you have insufficient LP tokens"
 
-        # ********************
-        #     fill in code
-        # ********************
+        x = l / self.L * self.Rx
+        y = l / self.L * self.Ry
+
+        self.Rx -= x
+        self.Ry -= y
+        
+        self.L -= l
+        self.l -= l
         
         return x, y
+
+
+    def burn_and_swap(self, l: list) -> float:
+        """
+        a method that burns your LP tokens, then swaps y to x and returns only x
+
+        Parameters
+        ----------
+        l : array (K,)
+            amount of LP tokens you have for each pool.
+
+        Returns
+        -------
+        x : array (K,)
+            The amount of token-x you receive at the end.
+
+        """
+        l = np.array(l)
+        x, y = self.burn(l)
+        sum_y = np.sum(y)
+        
+        k = np.argmax(map(lambda y: np.max(self.swap_y_to_x(y, quote = True)), sum_y * np.eye(self.N)))
+        
+        # argmax(
+        #     swap_y_to_x([sum(y), 0, 0, ..., 0], quote=True)
+        #     swap_y_to_x([0, sum(y), 0, ..., 0], quote=True)
+            
+        #     swap_y_to_x([0, 0, sum(y), ..., 0])
+        # )
+        
+        total_x = np.sum(x + self.swap_y_to_x(sum_y * np.eye(self.N)[k]))
+
+        return total_x
+
 
     def simulate(self, kappa, p, sigma, T=1, batch_size=256):
         """
@@ -264,9 +286,9 @@ class amm():
 
         # store the list of reservese generated by the simulation
         def make_list(batch_size):
-          x = deque(maxlen=batch_size)
-          x = [None] * batch_size
-          return x
+            x = deque(maxlen=batch_size)
+            x = [None] * batch_size
+            return x
 
         Rx_t = make_list(batch_size)
         Ry_t = make_list(batch_size)       
