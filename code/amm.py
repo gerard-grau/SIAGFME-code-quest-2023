@@ -15,7 +15,7 @@ from tqdm import tqdm
 
 class amm():
 
-    def __init__(self, Rx: NDArray, Ry: NDArray,  phi: NDArray) -> None:
+    def __init__(self, Rx, Ry,  phi):
         """
         instantiate the class
 
@@ -34,18 +34,18 @@ class amm():
 
         """
         
-        assert len(Rx) == len(Ry) == len(phi), "length of Rx, Ry, and phi must be the same."
+        assert (len(Rx) == len(Ry)) & (len(Ry)==len(phi)), "length of Rx, Ry, and phi must be the same."
 
-        self.Rx = Rx[:] # 1*Rx
-        self.Ry = Ry[:] # 1*Ry
-        self.phi = phi[:] # 1*phi
+        self.Rx = 1*Rx
+        self.Ry = 1*Ry
+        self.phi = 1*phi
         self.N = len(self.Rx)
 
         # number of LP tokens for each pool
         self.L = np.sqrt(self.Rx*self.Ry)
 
         # the trader begins with no LP tokens
-        self.l = np.zeros(self.N)
+        self.l = np.zeros(len(self.L))
 
 
     def swap_x_to_y(self, x: list, quote = False) -> NDArray:
@@ -297,7 +297,7 @@ class amm():
         event_direction_t = make_list(batch_size)
         pools = make_list(batch_size)
 
-        for k in tqdm(range(batch_size)):
+        for k in (range(batch_size)):
 
             N = np.random.poisson(lam = sum_kappa*T)
 
