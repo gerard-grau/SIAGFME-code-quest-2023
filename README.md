@@ -4,7 +4,7 @@ Welcome to my submission for the SIAM Student Programming Competition 2023. This
 
 Automated Market Makers are algorithms used in decentralized finance to facilitate token swaps without relying on traditional order books. They use mathematical formulas to price assets based on supply and demand. In this project, I modeled an AMM that allows swapping between two tokens and provides functionalities for liquidity providers to mint and burn liquidity tokens. The aim was to simulate market dynamics, develop strategies for liquidity provision, and analyze performance and risk.
 
-To accomplish this, I completed the implementation of an AMM model in Python, incorporating core functionalities like token swapping, liquidity minting and burning, and simulation of market events. An evolutionary optimization algorithm was developed to enhance the AMM's parameters for better performance, focusing on maximizing returns and minimizing risk. A Jupyter notebook was created to test and visualize the results, including plots of reserves, prices, and performance metrics.
+To accomplish this, I completed the implementation of an AMM model in Python, incorporating core functionalities like token swapping, and liquidity minting and burning. An evolutionary optimization algorithm was developed to enhance the AMM's parameters for better performance, focusing on maximizing returns and minimizing risk. A Jupyter notebook was created to test and visualize the results, including plots of reserves, prices, and performance metrics.
 
 The main components of the project include:
 
